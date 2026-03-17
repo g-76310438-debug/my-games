@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>保卫王权 - 五年级历史游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #1a202c;
+            color: white;
+            overflow: hidden;
+        }
+        .game-font { font-family: 'ZCOOL+KuaiLe', cursive; }
+        .castle-bg {
+            background: linear-gradient(to bottom, #2d3748, #1a202c);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            100% { transform: translate(0px, 0px) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="castle-bg p-4">
+        <!-- Start Screen -->
+        <div id="start-screen" class="text-center">
+            <h1 class="text-5xl mb-8 game-font text-yellow-500">保卫王权</h1>
+            <p class="mb-8 text-xl">回答历史问题，守护国家主权的支柱！</p>
+            <button onclick="startGame()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-10 rounded-full text-2xl transition transform hover:scale-110">
+                开始挑战
+            </button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden w-full max-w-2xl bg-gray-800 p-8 rounded-2xl shadow-2xl border-4 border-yellow-700 relative">
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-700 h-4 rounded-full mb-6">
+                <div id="progress" class="bg-yellow-500 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+
+            <!-- Stats -->
+            <div class="flex justify-between mb-6 text-sm font-bold uppercase tracking-widest text-yellow-300">
+                <span>生命值: <span id="health">❤️❤️❤️</span></span>
+                <span>关卡: <span id="level-num">1</span>/10</span>
+            </div>
+
+            <!-- Question -->
+            <div id="question-container" class="mb-8">
+                <h2 id="question-text" class="text-2xl font-bold mb-6 leading-tight">加载中...</h2>
+                <div id="options-container" class="grid grid-cols-1 gap-4">
+                    <!-- Options injected here -->
+                </div>
+            </div>
+
+            <!-- Feedback Message -->
+            <div id="feedback" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-80 rounded-2xl text-center p-6">
+                <div>
+                    <p id="feedback-text" class="text-3xl font-bold mb-4"></p>
+                    <button onclick="nextQuestion()" class="bg-white text-black px-6 py-2 rounded-lg font-bold">继续</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="hidden text-center">
+            <h1 id="end-title" class="text-6xl mb-4 game-font"></h1>
+            <p id="end-score" class="text-2xl mb-8"></p>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-xl">
+                重新再战
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            { q: "“拉惹”或“苏丹”在州属中处于什么地位？", a: ["最高统治者", "普通官员", "商人代表", "平民"], c: 0 },
+            { q: "根据社会契约，子民不顺从苏丹的行为称为什么？", a: ["Derhaka", "Daulat", "Adat", "Sultan"], c: 0 },
+            { q: "马来西亚目前有多少个州属设有君主制度？", a: ["7个", "9个", "11个", "13个"], c: 1 },
+            { q: "哪种称号是森美兰州统治者特有的？", a: ["苏丹", "拉惹", "严端", "州元首"], c: 2 },
+            { q: "在马六甲王朝，苏丹是哪种宗教的最高领袖？", a: ["佛教", "基督教", "印度教", "伊斯兰教"], c: 3 },
+            { q: "英国殖民时期，苏丹在什么事务上保留权力？", a: ["军事事务", "宗教与习俗", "外交事务", "税收"], c: 1 },
+            { q: "马来西亚目前实行的政治制度是？", a: ["君主立宪制", "绝对君主制", "无政府状态", "共产制度"], c: 0 },
+            { q: "统治者神圣不可侵犯的权威称为什么？", a: ["Derhaka", "Daulat", "Waadat", "Adat"], c: 1 },
+            { q: "除了马来西亚，以下哪个国家也有君主制？", a: ["新加坡", "泰国", "印尼", "菲律宾"], c: 1 },
+            { q: "社会契约（Waadat）是统治者与谁签订的约定？", a: ["英国人", "商人群体", "子民（平民）", "其他国王"], c: 2 }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let health = 3;
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = quizData[currentQuestion];
+            document.getElementById('question-text').innerText = q.q;
+            document.getElementById('level-num').innerText = currentQuestion + 1;
+            document.getElementById('progress').style.width = `${(currentQuestion / quizData.length) * 100}%`;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            q.a.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-xl transition border-2 border-transparent hover:border-yellow-500 focus:outline-none";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx) {
+            const correct = quizData[currentQuestion].c === idx;
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+            
+            if (correct) {
+                score++;
+                feedbackText.innerText = "✅ 正确！你守住了防线。";
+                feedbackText.className = "text-3xl font-bold mb-4 text-green-500";
+            } else {
+                health--;
+                updateHealth();
+                document.getElementById('game-screen').classList.add('shake');
+                setTimeout(() => document.getElementById('game-screen').classList.remove('shake'), 500);
+                feedbackText.innerText = "❌ 错误！防线受损。";
+                feedbackText.className = "text-3xl font-bold mb-4 text-red-500";
+            }
+            
+            feedback.classList.remove('hidden');
+        }
+
+        function updateHealth() {
+            let hearts = "";
+            for(let i=0; i<3; i++) {
+                hearts += i < health ? "❤️" : "🖤";
+            }
+            document.getElementById('health').innerText = hearts;
+        }
+
+        function nextQuestion() {
+            document.getElementById('feedback').classList.add('hidden');
+            currentQuestion++;
+            
+            if (health <= 0) {
+                endGame("防线失守...", "你需要多复习历史，才能更好地保卫国家主权。");
+            } else if (currentQuestion >= quizData.length) {
+                endGame("旗开得胜！", `你是一位出色的历史守护者，得分：${score}/10`);
+            } else {
+                showQuestion();
+            }
+        }
+
+        function endGame(title, msg) {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('end-title').innerText = title;
+            document.getElementById('end-score').innerText = msg;
+        }
+    </script>
+</body>
+</html>
