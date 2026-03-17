@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六年级数学：大数森林大冒险</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 800px;
+            padding: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.3s ease;
+        }
+        .hp-bar {
+            height: 20px;
+            background: #ffcccc;
+            border-radius: 10px;
+            border: 2px solid #333;
+        }
+        .hp-fill {
+            height: 100%;
+            background: #ff4444;
+            transition: width 0.5s ease;
+        }
+        .option-btn {
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .option-btn:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        #feedback {
+            height: 24px;
+            font-weight: bold;
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="start-screen" class="game-container text-center">
+    <h1 class="text-4xl font-bold text-green-700 mb-4 floating">🌳 大数森林大冒险</h1>
+    <p class="text-gray-600 mb-8">勇敢的探险家，运用你的六年级数学知识，<br>穿过充满谜题的森林，找回失落的智慧宝石吧！</p>
+    <button onclick="startGame()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+        开始冒险
+    </button>
+</div>
+
+<div id="game-screen" class="game-container hidden">
+    <div class="flex justify-between items-center mb-4">
+        <div class="w-1/3">
+            <span class="text-sm font-bold text-gray-700">生命值 (HP)</span>
+            <div class="hp-bar mt-1">
+                <div id="hp-fill" class="hp-fill" style="width: 100%"></div>
+            </div>
+        </div>
+        <div class="text-center">
+            <span class="text-2xl font-bold text-blue-600">Level <span id="level-num">1</span></span>
+        </div>
+        <div class="w-1/3 text-right">
+            <span class="text-sm font-bold text-gray-700">能量晶体: <span id="score" class="text-orange-500">0</span></span>
+        </div>
+    </div>
+
+    <div class="progress-bar mb-6">
+        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+    </div>
+
+    <div class="bg-blue-50 p-6 rounded-xl border-l-8 border-blue-500 mb-6">
+        <p id="question-text" class="text-xl font-semibold text-gray-800 leading-relaxed"></p>
+    </div>
+
+    <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 选项将通过 JS 生成 -->
+    </div>
+
+    <div id="feedback" class="mt-6 text-center"></div>
+</div>
+
+<div id="end-screen" class="game-container hidden text-center">
+    <h2 id="end-title" class="text-4xl font-bold mb-4">游戏结束</h2>
+    <p id="end-message" class="text-xl text-gray-600 mb-8"></p>
+    <div class="text-6xl mb-8">🏆</div>
+    <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-xl">
+        重新开始
+    </button>
+</div>
+
+<script>
+    const questions = [
+        {
+            q: "在数字 $8,342,195$ 中，数字 $3$ 的数位价值是多少？",
+            options: ["30,000", "300,000", "3,000,000", "3,000"],
+            correct: 1
+        },
+        {
+            q: "以下哪组数字全部都是质数？",
+            options: ["2, 3, 5, 9", "7, 11, 13, 17", "1, 2, 3, 5", "21, 23, 29, 31"],
+            correct: 1
+        },
+        {
+            q: "计算 $1.4$ 百万 $+$ $600,000 = $",
+            options: ["740,000", "1,460,000", "2,000,000", "800,000"],
+            correct: 2
+        },
+        {
+            q: "把 $\\frac{5}{8}$ 百万写成整数。",
+            options: ["580,000", "625,000", "375,000", "500,000"],
+            correct: 1
+        },
+        {
+            q: "计算：$25 \\times (4,000 + 1,000) \\div 5 = $",
+            options: ["25,000", "125,000", "20,000", "50,000"],
+            correct: 0
+        },
+        {
+            q: "一个水库原有 $4.5$ 百万升水，干旱流失了 $850,000$ 升，还剩多少升？",
+            options: ["3,650,000", "4,415,000", "3,150,000", "4,350,000"],
+            correct: 0
+        },
+        {
+            q: "把 $7,025,000$ 化为百万单位的小数。",
+            options: ["7.25 百万", "7.025 百万", "70.25 百万", "0.7025 百万"],
+            correct: 1
+        },
+        {
+            q: "一箱苹果有 $48$ 个。$0.02$ 百万个苹果需要装多少箱？",
+            options: ["20,000 箱", "416.6 箱", "417 箱", "2,000 箱"],
+            correct: 2,
+            note: "注：0.02百万 = 20,000。20,000 ÷ 48 ≈ 416.67"
+        },
+        {
+            q: "以下哪个算式符合：先减法，再乘法？",
+            options: ["$100 \\times 50 - 20$", "$(100 - 20) \\times 50$", "$100 - 20 \\times 50$", "$50 \\times 100 - 20$"],
+            correct: 1
+        },
+        {
+            q: "最终挑战：$(3.5 \\text{百万} - 1.5 \\text{百万}) \\div 4 = $",
+            options: ["500,000", "50,000", "2,000,000", "800,000"],
+            correct: 0
+        }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    let hp = 100;
+
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if (currentQuestion >= questions.length) {
+            endGame(true);
+            return;
+        }
+
+        const q = questions[currentQuestion];
+        // 简单处理数学符号显示（仅展示，不解析复杂的 LaTeX）
+        document.getElementById('question-text').innerText = q.q.replace(/\$/g, '');
+        document.getElementById('level-num').innerText = currentQuestion + 1;
+        document.getElementById('progress-fill').style.width = `${(currentQuestion / questions.length) * 100}%`;
+        
+        const optionsGrid = document.getElementById('options-grid');
+        optionsGrid.innerHTML = '';
+        
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = "option-btn bg-white p-4 rounded-lg shadow text-left text-lg font-medium text-gray-700";
+            btn.innerText = opt.replace(/\$/g, '');
+            btn.onclick = () => checkAnswer(index);
+            optionsGrid.appendChild(btn);
+        });
+
+        document.getElementById('feedback').innerText = '';
+    }
+
+    function checkAnswer(choice) {
+        const q = questions[currentQuestion];
+        const feedback = document.getElementById('feedback');
+        
+        if (choice === q.correct) {
+            score += 10;
+            document.getElementById('score').innerText = score;
+            feedback.innerText = "✅ 太棒了！回答正确！";
+            feedback.className = "mt-6 text-center text-green-600";
+            
+            setTimeout(() => {
+                currentQuestion++;
+                loadQuestion();
+            }, 1000);
+        } else {
+            hp -= 20;
+            updateHP();
+            feedback.innerText = "❌ 哦不，答错了！失去了 20 HP";
+            feedback.className = "mt-6 text-center text-red-600";
+            
+            if (hp <= 0) {
+                setTimeout(() => endGame(false), 1000);
+            }
+        }
+    }
+
+    function updateHP() {
+        const hpFill = document.getElementById('hp-fill');
+        hpFill.style.width = `${hp}%`;
+        if (hp <= 40) hpFill.style.backgroundColor = "#ff9800";
+        if (hp <= 20) hpFill.style.backgroundColor = "#f44336";
+    }
+
+    function endGame(win) {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        
+        const title = document.getElementById('end-title');
+        const msg = document.getElementById('end-message');
+        
+        if (win) {
+            title.innerText = "🎉 探险成功！";
+            title.className = "text-4xl font-bold mb-4 text-green-600";
+            msg.innerText = `恭喜你通过了所有关卡！你共收集了 ${score} 个能量晶体。你已经完美掌握了单元一的知识！`;
+        } else {
+            title.innerText = "💀 探险失败";
+            title.className = "text-4xl font-bold mb-4 text-red-600";
+            msg.innerText = `生命值耗尽了... 别灰心，回去复习一下“大数运算”和“质数”，再来挑战吧！`;
+        }
+    }
+</script>
+
+</body>
+</html>
