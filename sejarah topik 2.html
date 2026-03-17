@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五年级历史单元二复习游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        .royal-font {
+            font-family: 'ZCOOL XiaoWei', serif;
+        }
+        .card-flip {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .level-badge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-yellow-50 min-h-screen flex items-center justify-center p-4">
+
+    <div id="game-container" class="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full border-4 border-yellow-400">
+        <!-- 头部信息 -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-yellow-700 royal-font mb-2">🏰 皇室晋升之路</h1>
+            <p class="text-gray-600">五年级历史单元二：我们的国家元首</p>
+        </div>
+
+        <!-- 角色等级显示 -->
+        <div class="flex justify-between items-center bg-yellow-100 p-4 rounded-xl mb-6">
+            <div>
+                <p class="text-xs uppercase text-yellow-600 font-bold">当前职位</p>
+                <p id="rank-display" class="text-xl font-bold text-yellow-800">皇宫守卫</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs uppercase text-yellow-600 font-bold">晋升进度</p>
+                <p id="score-display" class="text-xl font-bold text-yellow-800">0 / 100</p>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="w-full bg-gray-200 rounded-full h-4 mb-8">
+            <div id="progress-inner" class="bg-yellow-500 h-4 rounded-full progress-bar" style="width: 0%"></div>
+        </div>
+
+        <!-- 游戏主体 -->
+        <div id="quiz-section">
+            <div class="mb-6">
+                <span id="question-number" class="bg-yellow-600 text-white px-3 py-1 rounded-full text-sm font-bold">第 1 关</span>
+                <p id="question-text" class="text-lg font-medium text-gray-800 mt-4 leading-relaxed"></p>
+            </div>
+
+            <div id="options-container" class="space-y-3">
+                <!-- 选项将通过 JS 生成 -->
+            </div>
+        </div>
+
+        <!-- 反馈区 -->
+        <div id="feedback" class="hidden mt-6 p-4 rounded-xl text-center font-bold"></div>
+
+        <!-- 结算界面 (默认隐藏) -->
+        <div id="result-screen" class="hidden text-center">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-2xl font-bold text-yellow-800 mb-2">恭喜！你已晋升为</h2>
+            <p id="final-rank" class="text-4xl font-bold text-red-600 royal-font mb-6"></p>
+            <button onclick="location.reload()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-full transition duration-300">
+                重新挑战
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                q: "国家元首是由哪个机构选出来的？",
+                options: ["国会", "首相署", "统治者会议", "人民投票"],
+                correct: 2,
+                reason: "由九位马来统治者轮流选出。"
+            },
+            {
+                q: "国家元首的任期是多久？",
+                options: ["3年", "5年", "10年", "终身"],
+                correct: 1,
+                reason: "宪法规定五年一任。"
+            },
+            {
+                q: "国家元首是哪种部队的最高统帅？",
+                options: ["警察部队", "大马武装部队", "消防部队", "校园巡察员"],
+                correct: 1,
+                reason: "包括陆军、海军和空军。"
+            },
+            {
+                q: "国家元首后的正式称呼是什么？",
+                options: ["Raja Permaisuri Agong", "Sultanah Agong", "Tun Agong", "Queen of Malaysia"],
+                correct: 0,
+                reason: "这是宪法规定的正式头衔。"
+            },
+            {
+                q: "在州属层面，谁是国家元首在马六甲、槟城、沙巴和砂拉越的宗教领袖？",
+                options: ["当地苏丹", "首相", "国家元首本人", "州元首"],
+                correct: 2,
+                reason: "元首是无统治者州属和联邦直辖区的伊斯兰教领袖。"
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        const ranks = ["皇宫守卫", "巡逻队长", "皇家侍卫", "内宫大臣", "大内总管"];
+
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedback = document.getElementById('feedback');
+        const scoreDisplay = document.getElementById('score-display');
+        const rankDisplay = document.getElementById('rank-display');
+        const progressInner = document.getElementById('progress-inner');
+        const questionNumber = document.getElementById('question-number');
+
+        function loadQuestion() {
+            const q = questions[currentQuestion];
+            questionText.textContent = q.q;
+            questionNumber.textContent = `第 ${currentQuestion + 1} 关`;
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-100 hover:border-yellow-400 hover:bg-yellow-50 transition duration-200 font-medium";
+                btn.textContent = opt;
+                btn.onclick = () => checkAnswer(index);
+                optionsContainer.appendChild(btn);
+            });
+
+            feedback.classList.add('hidden');
+        }
+
+        function checkAnswer(choice) {
+            const correct = questions[currentQuestion].correct;
+            const btns = optionsContainer.querySelectorAll('button');
+            
+            // 禁用所有按钮防止多点
+            btns.forEach(b => b.disabled = true);
+
+            if (choice === correct) {
+                score += 20;
+                feedback.textContent = "✅ 正确！晋升声望 +20！";
+                feedback.className = "mt-6 p-4 rounded-xl text-center font-bold bg-green-100 text-green-700";
+                btns[choice].className += " border-green-500 bg-green-50";
+            } else {
+                feedback.textContent = `❌ 错了... 正确答案是: ${questions[currentQuestion].options[correct]}`;
+                feedback.className = "mt-6 p-4 rounded-xl text-center font-bold bg-red-100 text-red-700";
+                btns[choice].className += " border-red-500 bg-red-50";
+            }
+
+            feedback.classList.remove('hidden');
+            updateUI();
+
+            setTimeout(() => {
+                currentQuestion++;
+                if (currentQuestion < questions.length) {
+                    loadQuestion();
+                } else {
+                    showResult();
+                }
+            }, 1500);
+        }
+
+        function updateUI() {
+            scoreDisplay.textContent = `${score} / 100`;
+            progressInner.style.width = `${score}%`;
+            const rankIndex = Math.min(Math.floor(score / 25), ranks.length - 1);
+            rankDisplay.textContent = ranks[rankIndex];
+        }
+
+        function showResult() {
+            document.getElementById('quiz-section').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            const rankIndex = Math.min(Math.floor(score / 25), ranks.length - 1);
+            document.getElementById('final-rank').textContent = ranks[rankIndex];
+        }
+
+        // 初始化
+        loadQuestion();
+    </script>
+</body>
+</html>
