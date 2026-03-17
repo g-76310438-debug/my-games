@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六年级数学单元二挑战赛</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f6f8fb 0%, #e5eef9 100%);
+            min-height: 100vh;
+        }
+        .game-font {
+            font-family: 'ZCOOL+KuaiLe', cursive;
+        }
+        .card {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .option-btn {
+            transition: all 0.2s;
+        }
+        .option-btn:active {
+            transform: scale(0.98);
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex items-center justify-center">
+
+    <div id="game-container" class="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <!-- 顶部状态栏 -->
+        <div class="bg-blue-600 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold mb-1 game-font">数学大冒险</h1>
+                <p class="text-blue-100 text-sm">单元二：分数、小数与百分比</p>
+            </div>
+            <div class="text-right">
+                <div class="text-3xl font-bold" id="score">0</div>
+                <div class="text-xs uppercase tracking-widest opacity-80">当前得分</div>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="w-full h-2 bg-blue-100">
+            <div id="progress" class="h-full bg-yellow-400 progress-bar" style="width: 0%"></div>
+        </div>
+
+        <!-- 游戏主体 -->
+        <div class="p-8">
+            <div id="start-screen" class="text-center py-12">
+                <div class="text-6xl mb-6">🧮</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">准备好接受挑战了吗？</h2>
+                <p class="text-gray-600 mb-8">本挑战包含 10 道关于单元二的核心练习题。<br>每答对一题得 10 分！</p>
+                <button onclick="startGame()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg transition transform hover:scale-105">
+                    开始游戏
+                </button>
+            </div>
+
+            <div id="quiz-screen" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full" id="question-number">第 1/10 题</span>
+                    <button onclick="showHint()" class="text-blue-600 text-sm hover:underline">💡 查看提示</button>
+                </div>
+                
+                <div id="question-text" class="text-xl font-bold text-gray-800 mb-8 min-h-[60px]">
+                    题目载入中...
+                </div>
+
+                <div id="hint-box" class="hidden mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 italic text-sm rounded">
+                </div>
+
+                <div class="grid grid-cols-1 gap-4" id="options-container">
+                    <!-- 选项将在这里动态生成 -->
+                </div>
+            </div>
+
+            <div id="result-screen" class="hidden text-center py-8">
+                <div id="result-emoji" class="text-7xl mb-4">🎉</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2" id="result-title">太棒了！</h2>
+                <div class="text-5xl font-bold text-blue-600 mb-6" id="final-score">0</div>
+                <p class="text-gray-600 mb-8" id="result-text">你已经掌握了单元二的所有知识点！</p>
+                <button onclick="restartGame()" class="bg-gray-800 hover:bg-black text-white font-bold py-3 px-8 rounded-full transition shadow-md">
+                    再次挑战
+                </button>
+            </div>
+        </div>
+
+        <!-- 反馈弹窗 -->
+        <div id="feedback" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-2xl hidden opacity-0 transition-opacity duration-300">
+            反馈信息
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                q: "计算：$1\\frac{1}{4} \\times 0.8 =$ ？",
+                h: "尝试将分数转换为小数 (1.25)，或者将小数转换为分数 (4/5) 后计算。",
+                options: [
+                    { t: "1", c: true, r: "正确！1.25 × 0.8 = 1" },
+                    { t: "1.2", c: false, r: "错误，注意小数乘法的数位。" },
+                    { t: "0.1", c: false, r: "错误，结果太小了。" },
+                    { t: "10", c: false, r: "错误，结果太大了。" }
+                ]
+            },
+            {
+                q: "将 $85\\%$ 化为最简分数。",
+                h: "85% = 85/100，然后用 5 进行约分。",
+                options: [
+                    { t: "17/20", c: true, r: "正确！85/100 = 17/20。" },
+                    { t: "8.5/10", c: false, r: "错误，分数里不能有小数。" },
+                    { t: "42/50", c: false, r: "还没约分到最简哦。" },
+                    { t: "17/25", c: false, r: "分母计算错误，100 ÷ 5 = 20。" }
+                ]
+            },
+            {
+                q: "计算：$3.6 \\div \\frac{3}{5} =$ ？",
+                h: "除以 3/5 等于乘上 5/3。",
+                options: [
+                    { t: "6", c: true, r: "正确！3.6 × 5/3 = 1.2 × 5 = 6。" },
+                    { t: "2.16", c: false, r: "你是不是算成了乘法？" },
+                    { t: "0.6", c: false, r: "计算错误，再试一次。" },
+                    { t: "1.8", c: false, r: "结果不对哦。" }
+                ]
+            },
+            {
+                q: "一件衣服原价 $80，现在打八折出售。现价是多少？",
+                h: "打八折 = 原价 × 80%。",
+                options: [
+                    { t: "$64", c: true, r: "正确！80 × 0.8 = 64。" },
+                    { t: "$16", c: false, r: "这是节省的钱，不是售价。" },
+                    { t: "$72", c: false, r: "折扣计算错误。" },
+                    { t: "$60", c: false, r: "结果不对哦。" }
+                ]
+            },
+            {
+                q: "一瓶果汁有 1.5 升，小明喝了其中的 1/3。还剩下多少升？",
+                h: "先算出剩下的比例是 2/3，或者算出喝了 0.5 升。",
+                options: [
+                    { t: "1 升", c: true, r: "正确！1.5 - 0.5 = 1 升。" },
+                    { t: "0.5 升", c: false, r: "这是小明喝掉的分量。" },
+                    { t: "1.2 升", c: false, r: "计算错误。" },
+                    { t: "0.75 升", c: false, r: "这只剩下一半了。" }
+                ]
+            },
+            {
+                q: "计算：$45 + 10\\% \\times 200 =$ ？",
+                h: "先算 10% × 200，再加上 45。",
+                options: [
+                    { t: "65", c: true, r: "正确！20 + 45 = 65。" },
+                    { t: "55", c: false, r: "记得先算乘法哦。" },
+                    { t: "110", c: false, r: "运算顺序错误。" },
+                    { t: "47", c: false, r: "百分比计算错误。" }
+                ]
+            },
+            {
+                q: "如果 $\frac{2}{5}$ 的数值是 40，那么总数是多少？",
+                h: "总数 = 40 ÷ (2/5)。",
+                options: [
+                    { t: "100", c: true, r: "正确！40 ÷ 0.4 = 100。" },
+                    { t: "16", c: false, r: "你算成了 40 的 2/5。" },
+                    { t: "80", c: false, r: "计算错误。" },
+                    { t: "200", c: false, r: "结果不对哦。" }
+                ]
+            },
+            {
+                q: "计算：$0.25 \\div 25\\% =$ ？",
+                h: "25% 和 0.25 是相等的数值。",
+                options: [
+                    { t: "1", c: true, r: "正确！两个数相等，商为 1。" },
+                    { t: "0.1", c: false, r: "小数点错了。" },
+                    { t: "100", c: false, r: "计算错误。" },
+                    { t: "0.01", c: false, r: "计算错误。" }
+                ]
+            },
+            {
+                q: "班级有 40 人，女生占 60%。男生有多少人？",
+                h: "男生占 40%，计算 40 × 40%。",
+                options: [
+                    { t: "16", c: true, r: "正确！40 × 0.4 = 16。" },
+                    { t: "24", c: false, r: "这是女生的人数。" },
+                    { t: "20", c: false, r: "男女不是平分的哦。" },
+                    { t: "14", c: false, r: "减法计算错误。" }
+                ]
+            },
+            {
+                q: "计算：$\\frac{3}{4} + 0.5 \\times 2 =$ ？",
+                h: "先算 0.5 × 2 = 1。",
+                options: [
+                    { t: "1 3/4", c: true, r: "正确！0.75 + 1 = 1.75。" },
+                    { t: "2 1/2", c: false, r: "运算顺序错了。" },
+                    { t: "1.25", c: false, r: "计算错误。" },
+                    { t: "1 1/4", c: false, r: "计算错误。" }
+                ]
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let canAnswer = true;
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            canAnswer = true;
+            const q = quizData[currentQuestion];
+            document.getElementById('question-number').innerText = `第 ${currentQuestion + 1}/${quizData.length} 题`;
+            document.getElementById('question-text').innerText = q.q.replace(/\$/g, '');
+            document.getElementById('progress').style.width = `${((currentQuestion) / quizData.length) * 100}%`;
+            document.getElementById('hint-box').classList.add('hidden');
+            document.getElementById('hint-box').innerText = q.h;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full p-4 text-left border-2 border-gray-100 rounded-2xl hover:border-blue-300 hover:bg-blue-50 font-medium text-gray-700 flex justify-between items-center";
+                btn.innerHTML = `<span>${opt.t}</span><span class="opacity-0">✓</span>`;
+                btn.onclick = () => checkAnswer(idx, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx, btn) {
+            if (!canAnswer) return;
+            canAnswer = false;
+
+            const correct = quizData[currentQuestion].options[idx].c;
+            const rationale = quizData[currentQuestion].options[idx].r;
+
+            if (correct) {
+                score += 10;
+                document.getElementById('score').innerText = score;
+                btn.classList.replace('border-gray-100', 'border-green-500');
+                btn.classList.add('bg-green-50', 'text-green-700');
+                btn.querySelector('span:last-child').innerHTML = '✅';
+                btn.querySelector('span:last-child').classList.replace('opacity-0', 'opacity-100');
+                showFeedback(rationale, 'bg-green-600');
+            } else {
+                btn.classList.replace('border-gray-100', 'border-red-500');
+                btn.classList.add('bg-red-50', 'text-red-700', 'shake');
+                btn.querySelector('span:last-child').innerHTML = '❌';
+                btn.querySelector('span:last-child').classList.replace('opacity-0', 'opacity-100');
+                showFeedback(rationale, 'bg-red-600');
+                
+                // 高亮正确答案
+                const options = document.querySelectorAll('.option-btn');
+                quizData[currentQuestion].options.forEach((opt, i) => {
+                    if (opt.c) {
+                        options[i].classList.replace('border-gray-100', 'border-green-500');
+                        options[i].classList.add('bg-green-50');
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                currentQuestion++;
+                if (currentQuestion < quizData.length) {
+                    loadQuestion();
+                } else {
+                    showResults();
+                }
+            }, 2000);
+        }
+
+        function showHint() {
+            document.getElementById('hint-box').classList.remove('hidden');
+        }
+
+        function showFeedback(msg, bgColor) {
+            const fb = document.getElementById('feedback');
+            fb.innerText = msg;
+            fb.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-2xl ${bgColor}`;
+            fb.classList.remove('hidden');
+            fb.style.opacity = '1';
+            setTimeout(() => {
+                fb.style.opacity = '0';
+                setTimeout(() => fb.classList.add('hidden'), 300);
+            }, 1800);
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('progress').style.width = '100%';
+            document.getElementById('final-score').innerText = score;
+
+            if (score >= 80) {
+                document.getElementById('result-emoji').innerText = '🏆';
+                document.getElementById('result-title').innerText = '太出色了！';
+                document.getElementById('result-text').innerText = '你已经完全掌握了单元二的内容。继续保持！';
+            } else if (score >= 60) {
+                document.getElementById('result-emoji').innerText = '🌟';
+                document.getElementById('result-title').innerText = '做得好！';
+                document.getElementById('result-text').innerText = '你表现得很棒，再稍微复习一下不熟悉的题型就能拿满分了。';
+            } else {
+                document.getElementById('result-emoji').innerText = '💪';
+                document.getElementById('result-title').innerText = '继续加油！';
+                document.getElementById('result-text').innerText = '不要灰心，再看一次提示和解析，你一定会进步的。';
+            }
+        }
+
+        function restartGame() {
+            currentQuestion = 0;
+            score = 0;
+            document.getElementById('score').innerText = '0';
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
